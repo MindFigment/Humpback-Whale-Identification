@@ -1,1 +1,1 @@
-Humpback-Whale-Identification
+Humpback-Whale-Identification (kaggle competition)
