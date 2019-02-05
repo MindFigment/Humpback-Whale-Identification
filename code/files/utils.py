@@ -1,14 +1,12 @@
 from PIL import Image
-import globals
 from os.path import isfile
 from pandas import read_csv
 import numpy as np
 from math import sqrt
-from imagehash import phash
 from keras.preprocessing.image import img_to_array,array_to_img
 import random
 import pickle
-from globals import train_dir, test_dir
+from globals import *
 from keras import backend as K
 
 def expand_path(img):
@@ -50,7 +48,7 @@ def make_dicts():
 
     train_data = dict([(img, whale) for (_, img, whale) in read_csv(train_csv).to_records()])
     if isfile(whale_to_imgs):
-        w2imgs = load_pickle_file(whales_to_imgs)
+        w2imgs = load_pickle_file(whale_to_imgs)
     else:
         w2imgs = {}
         for img, whale in train_data.items():

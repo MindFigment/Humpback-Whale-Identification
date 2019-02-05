@@ -4,22 +4,28 @@ from lap import lapjv
 from globals import whale_to_training, whale_to_index
 from keras import backend as K
 from utils import read_raw_image
+from utils import load_pickle_file, save_to_pickle
+import numpy as np
+import random
 
 class TrainingData(Sequence):
-    def __init__(self, score, steps=1000, batch_size=32):
+    def __init__(self, score, train, steps=1000, batch_size=32):
         """
         @param score: cost matrix for the picture matching
         @param steps: number of epoch we are planning with this score matrix
         """
         super(TrainingData, self).__init__()
         self.score = -score
+        self.train = train
         self.steps = steps
         self.batch_size = batch_size
         self.img_shape = (384,384,1)
-        w2ts = load_pickle_file(whale_to_training)
-        w2i = load_pickle_file(whale_to_index)
-        for ts in w2ts.values():
-            idxs = [w2i[w] for w in ts]
+        self.w2ts = load_pickle_file(whale_to_training)
+        self.w2i = load_pickle_file(whale_to_index)
+        self.match = []
+        self.unmatch = []
+        for ts in self.w2ts.values():
+            idxs = [self.w2i[w] for w in ts]
             for i in idxs:
                 for j in idxs:
                     self.score[i, j] = 10000.0
@@ -57,7 +63,7 @@ class TrainingData(Sequence):
 
         y = np.arange(len(x), dtype=np.int32)
 
-        for ts in w2ts.values():
+        for ts in self.w2ts.values():
             d = ts.copy()
             while True:
                 random.shuffle(d)
@@ -73,14 +79,14 @@ class TrainingData(Sequence):
                 print(y)
                 print(i, j)
             assert i != j
-            self.unmatch.append((train[i], train[j]))
+            self.unmatch.append((self.train[i], self.train[j]))
 
         self.score[x, y] = 10000.0
         self.score[y, x] = 10000.0
         random.shuffle(self.match)
         random.shuffle(self.unmatch)
-
-        assert len(self.match) == len(train) and len(self.unmatch) == len(train)
+        # print(len(self.match), len(self.unmatch), len(self.train))
+        assert len(self.match) == len(self.train) and len(self.unmatch) == len(self.train)
 
     def __len__(self):
-        return (len(self.match) + len(self.umatch) + self.batch_size - 1) // self.batch_size
+        return (len(self.match) + len(self.unmatch) + self.batch_size - 1) // self.batch_size

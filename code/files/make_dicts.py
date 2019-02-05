@@ -4,7 +4,6 @@ from pandas import read_csv
 from utils import load_pickle_file, save_to_pickle, expand_path
 from tqdm import tqdm
 from PIL import Image
-from tqdm import tqdm
 import random
 import numpy as np
 
@@ -30,7 +29,7 @@ def make_dicts():
 
     train_data = dict([(img, whale) for (_, img, whale) in read_csv(train_csv).to_records()])
     if isfile(whale_to_imgs):
-        w2imgs = load_pickle_file(whales_to_imgs)
+        w2imgs = load_pickle_file(whale_to_imgs)
     else:
         w2imgs = {}
         for img, whale in tqdm(train_data.items()):
@@ -49,6 +48,7 @@ def make_dicts():
         random.shuffle(train)
         train_set = set(train)
         w2ts = {}
+        save_to_pickle(train_examples, train)
         for whale, imgs in tqdm(w2imgs.items()):
             for img in imgs:
                 if img in train_set:
@@ -65,6 +65,4 @@ def make_dicts():
         save_to_pickle(whale_to_index, w2i)
 
 if __name__ == "__main__":
-    print("Executing as main program")
-    print("Value of __name__ is: ", __name__)
     make_dicts()

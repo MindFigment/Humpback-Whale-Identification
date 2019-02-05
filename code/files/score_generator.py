@@ -2,6 +2,7 @@ from keras.utils import Sequence
 import numpy as np
 from keras import backend as K
 from utils import read_raw_image
+from tqdm import tqdm
 # A keras generator to evaluate on the HEAD MODEL on features already pre-computed.
 # It computes only  the upper triangular matrix of the cost matrix if y is None
 class ScoreGen(Sequence):
@@ -21,8 +22,7 @@ class ScoreGen(Sequence):
             self.iy = self.iy.reshape((self.iy.size))
         self.subbatch = (len(self.x) + self.batch_size - 1) // self.batch_size
         if self.verbose > 0:
-            print('verbose')
-            # self.progress = tqdm_notebook(total=len(self), desc='Scores')
+            self.progress = tqdm(total=len(self), desc='scores')
 
     def __getitem__(self, index):
         start = index * self.batch_size
@@ -30,10 +30,9 @@ class ScoreGen(Sequence):
         a = self.y[self.iy[start:end], :]
         b = self.x[self.ix[start:end], :]
         if self.verbose > 0:
-            print('verbose')
-            # self.progress.update()
-            # if self.progress.n >= len(self):
-            #     self.progress.close()
+            self.progress.update()
+            if self.progress.n >= len(self):
+                self.progress.close()
         return [a, b]
 
     def __len__(self):

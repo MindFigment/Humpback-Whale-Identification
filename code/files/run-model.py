@@ -1,13 +1,13 @@
 from os.path import isfile
 from model import Model
+import keras
+from globals import mpiotte_standard_model
 
-mpiotte_standard_model = 'C:/Users/Maks/kaggle-competitions/Humpback-Whale-Identification/data/models/mpiotte-standard.model'
-if isfile(mpiotte_standard_model):
-    tmp = keras.models.load_model(mpiotte_standard_model)
-    print('Loaded tmp model')
-    # model.set_weights(tmp.get_weights)
+if isfile(mpiotte_standard_model + 'asdf'):
+    model = keras.models.load_model(mpiotte_standard_model)
+    print('Loaded mpiotte-standard model')    
 else:
-    mpiotte_model = Model(64e05, 0.0002)
+    mpiotte_model = Model(64e-5, 0.2)
     # epoch 0-10
     mpiotte_model.make_steps(steps=10, ampl=1000)
     ampl = 100.0
@@ -18,36 +18,36 @@ else:
     for _ in range(18):
         mpiotte_model.make_steps(steps=5, ampl=1.0)
     # epoch -> 200
-    set_lr(model, 16e-5)
+    mpiotte_model.set_lr(16e-5)
     for _ in range(10):
         mpiotte_model.make_steps(steps=5, ampl=0.5)
     # epoch -> 240
-    set_lr(model, 4e-5)
+    mpiotte_model.set_lr(4e-5)
     for _ in range(8):
         mpiotte_model.make_steps(steps=5, ampl=0.5)
     # epoch -> 250
-    set_lr(model, 1e-5)
+    mpiotte_model.set_lr(1e-5)
     for _ in range(2):
         mpiotte_model.make_steps(steps=5, ampl=0.25)
     # epoch -> 300
-    # weights = model.get_weights()
-    # model, branch_model, head_model = build_model(64e-5,0.0002)
-    # model.set_weights(weights)
+    weights = mpiotte_model.model.get_weights()
+    mpiotte_model = Model(64e-5,0.0002)
+    mpiotte_model.model.set_weights(weights)
     for _ in range(10):
         mpiotte_model.make_steps(steps=5, ampl=1.0)
     # epoch -> 350
-    set_lr(model, 16e-5)
+    mpiotte_model.set_lr(16e-5)
     for _ in range(10):
         mpiotte_model.make_steps(steps=5, ampl=0.5)
     # epoch -> 390
-    set_lr(model, 4e-5)
+    mpiotte_model.set_lr(4e-5)
     for _ in range(8):
         mpiotte_model.make_steps(steps=5, ampl=0.25)
     # epoch -> 400
-    set_lr(model, 1e-5)
+    mpiotte_model.set_lr(1e-5)
     for _ in range(2):
         mpiotte_model.make_steps(steps=5, ampl=0.25)
 
-    print(len(history))
+    print(len(mpiotte_model.histories))
 
-    model.save('mpiotte-standard.model')
+    mpiotte_model.model.save('mpiotte-standard.model')
