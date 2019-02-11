@@ -41,6 +41,8 @@ class ImageGenerator():
                 vertical_flip=False,
                 zoom_range=[0.8, 1.5],
                 rescale=1./255,
+                # shear_range=2,
+                zoom_range=[0.8, 1.5],
                 fill_mode='nearest') # randomly flip images
 
             datagen_test = ImageDataGenerator(
