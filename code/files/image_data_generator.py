@@ -36,10 +36,12 @@ class ImageGenerator():
                 featurewise_std_normalization=True, # divide inputs by std of the dataset
                 samplewise_std_normalization=True, # divide each input by its std
                 zca_whitening=False, # apply ZCA whitening
-                rotation_range=20, # randomly rotate images in the range (degrees, 0 to 180)
+                rotation_range=45, # randomly rotate images in the range (degrees, 0 to 180)
                 horizontal_flip=True, # randomly flip images
                 vertical_flip=False,
                 rescale=1./255,
+                # shear_range=2,
+                zoom_range=[0.8, 1.5],
                 fill_mode='nearest') # randomly flip images
 
             datagen_test = ImageDataGenerator(
