@@ -57,8 +57,8 @@ def make_dicts():
             if img not in w2imgs[whale]:
                 w2imgs[whale].append(img)
 
-    if isfile(train_examples):
-        train = load_pickle_file(train_examples)
+    if isfile(train_examples_file):
+        train = load_pickle_file(train_examples_file)
     else:
         train = []
         for whale, imgs in w2imgs.items():
@@ -85,10 +85,10 @@ def make_dicts():
 
 
 def read_raw_image(image):
-    I = Image.open(expand_path(image))
-    I = I.convert('L') # convert image to grayscale
+    I = Image.open(expand_path(image)).convert('L')
+    # I = I.convert('L') # convert image to grayscale
     I = I.resize((384,384))
-    I = img_to_array(I)
-    I -= np.mean(I, keepdims=True)
-    I /= np.std(I, keepdims=True) + K.epsilon()
+    # I = img_to_array(I)
+    # I -= np.mean(I, keepdims=True)
+    # I /= np.std(I, keepdims=True) + K.epsilon()
     return I

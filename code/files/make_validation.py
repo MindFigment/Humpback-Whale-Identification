@@ -10,7 +10,7 @@ import numpy as np
 def form_train_and_validation_data():
 
     train_data = dict([(img, whale) for (_, img, whale) in read_csv(train_csv).to_records()])
-    if isfile(whale_to_imgs):
+    if isfile(whale_to_imgs + 'aaa'):
         w2imgs = load_pickle_file(whale_to_imgs)
     else:
         print('lets go!')
@@ -35,17 +35,26 @@ def form_train_and_validation_data():
         # lonely_count = 0
         # new_whale_count = 0
         # couple_count = 0
-
+        val_known = []
+        val_submit = []
+        y_true = []
         matching_count = 0
         for whale, imgs in tqdm(w2imgs.items()):
             if whale == 'new_whale':
                 new_whale += imgs
             elif len(imgs) == 1:
-                lonely += imgs    
+                lonely += imgs
+                val_known += imgs    
             elif len(imgs) == 2:
                 val_match.append((imgs[0], imgs[1], 1))
+                val_submit.append(imgs[0])
+                val_known.append(imgs[1])
+                y_true.append(whale)
             elif len(imgs) >=4 and matching_count < 788:
                 val_match.append((imgs[0], imgs[1], 1))
+                val_known.append(imgs[0])
+                y_true.append(whale)
+                val_submit.append(imgs[1])
                 matching_count += 1
                 train_examples += imgs[2:]
             else:
@@ -68,13 +77,20 @@ def form_train_and_validation_data():
         print('Train size: ', len(train_examples))
         print('Validation size: ', len(validation_examples))
 
+        print('val_known size: ', len(val_known))
+        print('val_submit size: ', len(val_submit))
+
+        save_to_pickle(val_known_file, val_known)
+        save_to_pickle(val_submit_file, val_submit)
+        save_to_pickle(y_true_file, y_true)
+
         # save_to_pickle(train_examples, train)
         # save_to_pickle(validation_examples, validation)
 
         # assert len(train_examples) + len(validation_examples) == len(all_examples)
 
-        save_to_pickle(train_examples_file, train_examples)
-        save_to_pickle(validation_examples_file, validation_examples)
+        # save_to_pickle(train_examples_file, train_examples)
+        # save_to_pickle(validation_examples_file, validation_examples)
 
         w2ts = {}
         for whale, imgs in tqdm(w2imgs.items()):
@@ -86,11 +102,11 @@ def form_train_and_validation_data():
                         w2ts[whale].append(img)
         for w, ts in w2ts.items():
             w2ts[w] = np.array(ts)
-        save_to_pickle(whale_to_training, w2ts)
+        # save_to_pickle(whale_to_training, w2ts)
         w2i = {}
         for i, w in enumerate(train_examples):
             w2i[w] = i
-        save_to_pickle(whale_to_index, w2i)
+        # save_to_pickle(whale_to_index, w2i)
 
 if __name__ == "__main__":
     form_train_and_validation_data()

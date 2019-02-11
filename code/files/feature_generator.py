@@ -6,12 +6,13 @@ from tqdm import tqdm
 # A keras generator to evaluate only the BRANCH MODEL
 class FeatureGen(Sequence):
 
-    def __init__(self, data, batch_size=64, verbose=1):
+    def __init__(self, data, img_gen, batch_size=64, verbose=1):
         super(FeatureGen, self).__init__()
         self.data = data
         self.batch_size = batch_size
         self.verbose = verbose
         self.img_shape = (384, 384, 1)
+        self.img_gen = img_gen
         if self.verbose > 0:
             self.progress = tqdm(total=len(self), desc="features")
 
@@ -20,7 +21,8 @@ class FeatureGen(Sequence):
         size = min(len(self.data) - start, self.batch_size)
         a = np.zeros((size, ) + self.img_shape, dtype=K.floatx())
         for i in range(size):
-            a[i,:,:,:] = read_raw_image(self.data[start + i])
+            # a[i,:,:,:] = read_raw_image(self.data[start + i])
+            a[i,:,:,:] = self.img_gen.read_for_training(self.data[start + i])
         if self.verbose > 0:
             self.progress.update()
             if self.progress.n >= len(self):

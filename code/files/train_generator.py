@@ -1,15 +1,16 @@
 from keras.utils import Sequence
 from scipy.optimize import linear_sum_assignment
-from lap import lapjv
-from globals import whale_to_training, whale_to_index
+from globals import whale_to_training, whale_to_index, callback_path
 from keras import backend as K
 from utils import read_raw_image
 from utils import load_pickle_file, save_to_pickle
 import numpy as np
 import random
+import time
+from lapjv import lapjv 
 
 class TrainingData(Sequence):
-    def __init__(self, score, train, steps=1000, batch_size=32):
+    def __init__(self, score, train, img_gen, steps=1000, batch_size=32):
         """
         @param score: cost matrix for the picture matching
         @param steps: number of epoch we are planning with this score matrix
@@ -24,6 +25,7 @@ class TrainingData(Sequence):
         self.w2i = load_pickle_file(whale_to_index)
         self.match = []
         self.unmatch = []
+        self.img_gen = img_gen
         for ts in self.w2ts.values():
             idxs = [self.w2i[w] for w in ts]
             for i in idxs:
@@ -42,11 +44,11 @@ class TrainingData(Sequence):
         j = start // 2
 
         for i in range(0, size, 2):
-            a[i,:,:,:] = read_raw_image(self.match[j][0])
-            b[i,:,:,:] = read_raw_image(self.match[j][1])
+            a[i,:,:,:] = self.img_gen.read_for_training(self.match[j][0])
+            b[i,:,:,:] = self.img_gen.read_for_training(self.match[j][1])
             c[i,0] = 1
-            a[i+1,:,:,:] = read_raw_image(self.unmatch[j][0])
-            b[i+1,:,:,:] = read_raw_image(self.unmatch[j][1])
+            a[i+1,:,:,:] = self.img_gen.read_for_training(self.unmatch[j][0])
+            b[i+1,:,:,:] =self.img_gen.read_for_training(self.unmatch[j][1])
             c[i+1,0] = 0
             j += 1
         return [a,b], c
@@ -54,13 +56,18 @@ class TrainingData(Sequence):
     def on_epoch_end(self):
         if self.steps <= 0:
             return
-
         self.steps -= 1
         self.match = []
         self.unmatch = []
 
-        _,_,x = lapjv(self.score)
+        start_time = time.time()
+        _,x,_ = lapjv(self.score)
+        end_time = time.time()
+        exec_time = end_time - start_time
 
+        with open(callback_path + 'lapjv3.txt', 'a+') as f:
+            f.write(str(self.steps) + str(exec_time) + '\n')
+        
         y = np.arange(len(x), dtype=np.int32)
 
         for ts in self.w2ts.values():

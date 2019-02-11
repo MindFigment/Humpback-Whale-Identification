@@ -4,7 +4,7 @@ from utils import read_raw_image
 import numpy as np
 
 class ValData(Sequence):
-    def __init__(self, validation, batch_size=32):
+    def __init__(self, validation, img_gen, batch_size=32):
         """
         @param steps: number of epoch we are planning with this score matrix
         """
@@ -12,6 +12,7 @@ class ValData(Sequence):
         self.validation = validation
         self.batch_size = batch_size
         self.img_shape = (384,384,1)
+        self.img_gen = img_gen
 
     def __getitem__(self, index):
         start = self.batch_size * index
@@ -23,9 +24,9 @@ class ValData(Sequence):
         c = np.zeros((size,1), dtype=K.floatx())
 
         for i in range(size):
-            a[i,:,:,:] = read_raw_image(self.validation[i][0])
-            b[i,:,:,:] = read_raw_image(self.validation[i][1])
-            c[i,:] = self.validation[i][2]
+            a[i,:,:,:] = self.img_gen.read_for_training(self.validation[start + i][0])
+            b[i,:,:,:] = self.img_gen.read_for_training(self.validation[start + i][1])
+            c[i,:] = self.validation[start + i][2]
         return [a,b], c
 
     def __len__(self):

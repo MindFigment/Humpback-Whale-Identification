@@ -2,29 +2,26 @@ from keras import backend as K
 import numpy as np
 import random
 from models_file import build_model
-from globals import whale_to_imgs, whale_to_index, whale_to_training, score_file, features_file, train_examples
+from globals import *
 from pandas import read_csv
 from globals import train_csv
 from utils import load_pickle_file, save_to_pickle
 from feature_generator import FeatureGen
 from score_generator import ScoreGen
 from train_generator import TrainingData
+from val_generator import ValData
 from utils import save_to_pickle
-# import tensorflow as tf  
-# from keras.backend.tensorflow_backend import set_session  
-# config = tf.ConfigProto()  
-# config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU  
-# config.log_device_placement = False  # to log device placement (on which device the operation ran)  
-#                                     # (nothing gets printed in Jupyter, only if you run it standalone)
-# sess = tf.Session(config=config)  
-# set_session(sess)  # set this TensorFlow session as the default session for Keras  
-
+import keras
+from tqdm import tqdm
+from image_data_generator import ImageGenerator
 
 class Model():
     def __init__(self, lr, l2, histories = []):
         self.model, self.branch_model, self.head_model = build_model(lr, l2)
         self.histories = histories
         self.step = 0
+        self.img_shape = (384, 384, 1)
+        self.img_gen = ImageGenerator()
 
     def set_lr(self, lr):
         K.set_value(self.model.optimizer.lr, float(lr))
@@ -54,12 +51,12 @@ class Model():
             m[iy, ix] = score.squeeze()
         return m
 
-    def compute_score(self, verbose=1):
+    def compute_score(self, data, verbose=1):
         """
         Compute the score matrix by scoring every image from the training set against every other image O(n^2)
         """
-        features = self.branch_model.predict_generator(FeatureGen(self.train, verbose=verbose), max_queue_size=12, workers=3, verbose=0)
-        score = self.head_model.predict_generator(ScoreGen(features, verbose=verbose), max_queue_size=12, workers=3, verbose=0)
+        features = self.branch_model.predict_generator(FeatureGen(data, self.img_gen, verbose=verbose), max_queue_size=12, workers=8, verbose=0)
+        score = self.head_model.predict_generator(ScoreGen(features, verbose=verbose), max_queue_size=12, workers=8, verbose=0)
         score = self.score_reshape(score, features)
         return features, score
 
@@ -72,40 +69,100 @@ class Model():
         """
 
         # Load train
-        self.train = load_pickle_file(train_examples)
+        train = load_pickle_file(train_examples_file)
+        validation = load_pickle_file(validation_examples_file)
+
+        print('train len:', len(train))
+        print('validation len: ', len(validation))
 
         # shuffle training images
-        random.shuffle(self.train)
+        random.shuffle(train)
 
         # Load whales to hashes dict
         #w2ts = load_pickle_file(whale_to_training)
 
         # Map training image hash value to index n in 'train' array
         w2i = {}
-        for i, w in enumerate(self.train):
+        for i, w in enumerate(train):
             w2i[w] = i
         save_to_pickle(whale_to_index, w2i)
 
         # Compute the match score for each image pair
-        _, score = self.compute_score()
+        _, score = self.compute_score(train)
+        # _, score_val = self.compute_score(validation)
         # save_to_pickle(score_file, score)
         # save_to_pickle(features_file, features)
         # score = load_pickle_file(score_file) 
         # features = load_pickle_file(features_file)
 
+        callbacks_list = [
+            keras.callbacks.EarlyStopping(monitor='val_loss', patience=2),
+            keras.callbacks.ModelCheckpoint(filepath=data_path + '/models/tmp.h5', monitor='val_loss', save_best_only=True),
+            keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10),
+            keras.callbacks.CSVLogger(filename=callback_path + 'tmp.log', append=True),
+            keras.callbacks.TensorBoard(log_dir=tensorboard_dir)
+        ]
+
         # Train the model for 'step' epochs
         history = self.model.fit_generator(
-            TrainingData(score + ampl * np.random.random_sample(size=score.shape), self.train, steps=steps, batch_size=32),
-            initial_epoch=self.step, epochs=self.step + steps, max_queue_size=12, workers=6, verbose=1).history
+            TrainingData(score + ampl * np.random.random_sample(size=score.shape), train, self.img_gen, steps=steps, batch_size=32),
+            validation_data = ValData(validation, self.img_gen, batch_size=32),
+            initial_epoch=self.step, epochs=self.step + steps, max_queue_size=12, workers=8, verbose=1, callbacks=callbacks_list).history
         self.step += steps
 
-        # history = self.model.fit_generator(
-        #     TrainingData(np.random.random_sample(size=(len(self.train), len(self.train))), self.train, steps=steps, batch_size=32),
-        #     initial_epoch=self.step, epochs=self.step + steps, max_queue_size=12, workers=1, verbose=1).history
+        map_5 = self.val_score()
 
         #Collect history data
         history['epochs'] = self.step
         history['ms'] = np.mean(score)
         history['lr'] = self.get_lr()
-        print(history['epochs'], history['lr'], history['ms'])
+        history['map5'] = map_5
+        print(history['epochs'], history['lr'], history['ms'], 'MAP@5 --> ', history['map5'])
         self.histories.append(history)
+
+    def val_score(self):
+        val_known = load_pickle_file(val_known_file)
+        val_submit = load_pickle_file(val_submit_file)
+        y_true = load_pickle_file(y_true_file)
+        fknown = self.branch_model.predict_generator(FeatureGen(val_known, self.img_gen), max_queue_size=20, workers=8, verbose=0)
+        fsubmit = self.branch_model.predict_generator(FeatureGen(val_submit, self.img_gen), max_queue_size=20, workers=8, verbose=0)
+        score = self.head_model.predict_generator(ScoreGen(fknown, fsubmit), max_queue_size=20, workers=8, verbose=0)
+        score = self.score_reshape(score, fknown, fsubmit)
+
+        img2ws = load_pickle_file(img_to_whales)
+
+        best_5 = []
+        for i, _ in enumerate(tqdm(val_submit)):
+            t = []
+            s = set()
+            a = score[i,:]
+            for j in list(reversed(np.argsort(a))):
+                img = val_known[j]
+                for w in img2ws[img]:
+                    if w not in s:
+                        s.add(w)
+                        t.append(w)
+                        if len(t) == 5:
+                            break
+                if len(t) == 5:
+                    break
+            assert len(t) == 5 and len(s) == 5
+            best_5.append(t)
+
+        map_5 = self.map5(best_5, y_true)
+        return map_5
+
+    def map5(self, best_5, y_true):
+        epsilon = 1e-06
+        average_precision = epsilon
+        print('best5 len: ', len(best_5))
+        print('y_true len: ', len(y_true))
+        assert len(best_5) == len(y_true)
+        U = len(best_5)
+        for i in range(U):
+            for j, w in enumerate(best_5[i]):
+                if w == y_true[i]:
+                    average_precision += 1 / (j + 1)
+                    break
+        mean_average_precision = average_precision / U
+        return mean_average_precision
