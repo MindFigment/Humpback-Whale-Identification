@@ -19,44 +19,43 @@ class ImageGenerator():
 
 
     def create_image_generator(self):
-            train_data = [img for _,img,_ in read_csv(train_csv).to_records()]
-            size = len(train_data) // 90
-            data = np.zeros((size, ) + self.img_shape, dtype=K.floatx()) 
-            for i in tqdm(range(size)):
-                # data[i] = load_img(train_dir + train_data[i], target_size=self.img_shape)
-                I = Image.open(expand_path(train_data[i]))
-                I = I.convert('L') # convert image to grayscale
-                I = I.resize((384,384))
-                I = img_to_array(I)
-                data[i] = I
+            # train_data = [img for _,img,_ in read_csv(train_csv).to_records()]
+            # size = len(train_data) // 5
+            # data = np.zeros((size, ) + self.img_shape, dtype=K.floatx()) 
+            # for i in tqdm(range(size)):
+            #     # data[i] = load_img(train_dir + train_data[i], target_size=self.img_shape)
+            #     I = Image.open(expand_path(train_data[i]))
+            #     I = I.convert('L') # convert image to grayscale
+            #     I = I.resize((384,384))
+            #     I = img_to_array(I)
+            #     data[i] = I
 
             datagen_train = ImageDataGenerator(
-                featurewise_center=True, # set input mean to 0 over the dataset
-                samplewise_center=True, # set each sample mean to 0
-                featurewise_std_normalization=True, # divide inputs by std of the dataset
-                samplewise_std_normalization=True, # divide each input by its std
+                # featurewise_center=True, # set input mean to 0 over the dataset
+                # # samplewise_center=True, # set each sample mean to 0
+                # featurewise_std_normalization=True, # divide inputs by std of the dataset
+                # samplewise_std_normalization=True, # divide each input by its std
                 zca_whitening=False, # apply ZCA whitening
-                rotation_range=45, # randomly rotate images in the range (degrees, 0 to 180)
+                rotation_range=10, # randomly rotate images in the range (degrees, 0 to 180)
                 horizontal_flip=True, # randomly flip images
                 vertical_flip=False,
-                zoom_range=[0.8, 1.5],
+                zoom_range=[1.0, 1.2],
                 rescale=1./255,
-                # shear_range=2,
-                zoom_range=[0.8, 1.5],
-                fill_mode='nearest') # randomly flip images
+                shear_range=0.2,
+                fill_mode='nearest')
 
             datagen_test = ImageDataGenerator(
-                featurewise_center=True, # set input mean to 0 over the dataset
-                samplewise_center=False, # set each sample mean to 0
-                featurewise_std_normalization=True, # divide inputs by std of the dataset
-                samplewise_std_normalization=False, # divide each input by its std
-                rescale=1./255) # randomly flip images
+                # featurewise_center=True, # set input mean to 0 over the dataset
+                # # samplewise_center=False, # set each sample mean to 0
+                # featurewise_std_normalization=True, # divide inputs by std of the dataset
+                # samplewise_std_normalization=True, # divide each input by its std
+                rescale=1./255)
 
-            datagen_train.fit(data)
+            # datagen_train.fit(data)
 
-            datagen_test.fit(data)
+            # datagen_test.fit(data)
 
-            del data
+            # del data
 
             return datagen_train, datagen_test
 

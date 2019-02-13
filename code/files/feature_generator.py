@@ -22,7 +22,8 @@ class FeatureGen(Sequence):
         a = np.zeros((size, ) + self.img_shape, dtype=K.floatx())
         for i in range(size):
             # a[i,:,:,:] = read_raw_image(self.data[start + i])
-            a[i,:,:,:] = self.img_gen.read_for_training(self.data[start + i])
+            # a[i,:,:,:] = self.img_gen.read_for_testing(self.data[start + i])
+            a[i,:,:,:] = self.img_gen(self.data[start + i])
         if self.verbose > 0:
             self.progress.update()
             if self.progress.n >= len(self):

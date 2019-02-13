@@ -14,20 +14,30 @@ from utils import save_to_pickle
 import keras
 from tqdm import tqdm
 from image_data_generator import ImageGenerator
+import os
 
 class Model():
-    def __init__(self, lr, l2, histories = []):
+    def __init__(self, lr, l2, model_name, histories = []):
         self.model, self.branch_model, self.head_model = build_model(lr, l2)
         self.histories = histories
         self.step = 0
         self.img_shape = (384, 384, 1)
         self.img_gen = ImageGenerator()
+        self.best_map5 = 0
+        self.model_name = model_name
+        os.makedirs(tensorboard_dir + model_name, exist_ok=True)
 
     def set_lr(self, lr):
         K.set_value(self.model.optimizer.lr, float(lr))
 
     def get_lr(self):
         return K.get_value(self.model.optimizer.lr)
+
+    def set_l2(self, l2):
+        K.set_value(self.model.reqularizers[0].l2, float(l2))
+
+    def get_l2(self):
+        return K.get_value(self.model.regularizes[0].l2)
 
     def score_reshape(self, score, x, y=None):
         """
@@ -55,7 +65,7 @@ class Model():
         """
         Compute the score matrix by scoring every image from the training set against every other image O(n^2)
         """
-        features = self.branch_model.predict_generator(FeatureGen(data, self.img_gen, verbose=verbose), max_queue_size=12, workers=8, verbose=0)
+        features = self.branch_model.predict_generator(FeatureGen(data, self.img_gen.read_for_testing, verbose=verbose), max_queue_size=12, workers=8, verbose=0)
         score = self.head_model.predict_generator(ScoreGen(features, verbose=verbose), max_queue_size=12, workers=8, verbose=0)
         score = self.score_reshape(score, features)
         return features, score
@@ -72,8 +82,8 @@ class Model():
         train = load_pickle_file(train_examples_file)
         validation = load_pickle_file(validation_examples_file)
 
-        print('train len:', len(train))
-        print('validation len: ', len(validation))
+        # print('train len:', len(train))
+        # print('validation len: ', len(validation))
 
         # shuffle training images
         random.shuffle(train)
@@ -96,21 +106,25 @@ class Model():
         # features = load_pickle_file(features_file)
 
         callbacks_list = [
-            keras.callbacks.EarlyStopping(monitor='val_loss', patience=2),
-            keras.callbacks.ModelCheckpoint(filepath=data_path + '/models/tmp.h5', monitor='val_loss', save_best_only=True),
-            keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10),
-            keras.callbacks.CSVLogger(filename=callback_path + 'tmp.log', append=True),
-            keras.callbacks.TensorBoard(log_dir=tensorboard_dir)
+            # keras.callbacks.EarlyStopping(monitor='val_loss', patience=2, verbose=1),
+            keras.callbacks.ModelCheckpoint(filepath=models_path + self.model_name + '_' + str(self.step) + '.h5', monitor='val_loss', save_best_only=True, verbose=1),
+            keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, verbose=1),
+            keras.callbacks.CSVLogger(filename=callback_path + self.model_name + '.log', append=True),
+            keras.callbacks.TensorBoard(log_dir=tensorboard_dir + self.model_name)
         ]
 
         # Train the model for 'step' epochs
         history = self.model.fit_generator(
-            TrainingData(score + ampl * np.random.random_sample(size=score.shape), train, self.img_gen, steps=steps, batch_size=32),
-            validation_data = ValData(validation, self.img_gen, batch_size=32),
+            TrainingData(score + ampl * np.random.random_sample(size=score.shape), train, self.img_gen.read_for_training, steps=steps, batch_size=32),
+            validation_data = ValData(validation, self.img_gen.read_for_testing, batch_size=32),
             initial_epoch=self.step, epochs=self.step + steps, max_queue_size=12, workers=8, verbose=1, callbacks=callbacks_list).history
         self.step += steps
 
         map_5 = self.val_score()
+
+        if map_5 >= self.best_map5:
+            self.best_map5 = map_5
+            self.model.save(models_path + self.model_name + str(self.step) + '_' + str(map_5) + '.h5')
 
         #Collect history data
         history['epochs'] = self.step
@@ -124,8 +138,8 @@ class Model():
         val_known = load_pickle_file(val_known_file)
         val_submit = load_pickle_file(val_submit_file)
         y_true = load_pickle_file(y_true_file)
-        fknown = self.branch_model.predict_generator(FeatureGen(val_known, self.img_gen), max_queue_size=20, workers=8, verbose=0)
-        fsubmit = self.branch_model.predict_generator(FeatureGen(val_submit, self.img_gen), max_queue_size=20, workers=8, verbose=0)
+        fknown = self.branch_model.predict_generator(FeatureGen(val_known, self.img_gen.read_for_testing), max_queue_size=20, workers=8, verbose=0)
+        fsubmit = self.branch_model.predict_generator(FeatureGen(val_submit, self.img_gen.read_for_testing), max_queue_size=20, workers=8, verbose=0)
         score = self.head_model.predict_generator(ScoreGen(fknown, fsubmit), max_queue_size=20, workers=8, verbose=0)
         score = self.score_reshape(score, fknown, fsubmit)
 
@@ -155,8 +169,8 @@ class Model():
     def map5(self, best_5, y_true):
         epsilon = 1e-06
         average_precision = epsilon
-        print('best5 len: ', len(best_5))
-        print('y_true len: ', len(y_true))
+        # print('best5 len: ', len(best_5))
+        # print('y_true len: ', len(y_true))
         assert len(best_5) == len(y_true)
         U = len(best_5)
         for i in range(U):

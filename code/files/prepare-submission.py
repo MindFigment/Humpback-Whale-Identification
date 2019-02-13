@@ -1,3 +1,7 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
@@ -8,6 +12,7 @@ from keras.models import load_model
 from utils import load_pickle_file, save_to_pickle
 import time
 from model import Model
+import argparse
 
 def prepare_submission(threshold, filename, score, known, submit):
     """
@@ -18,7 +23,7 @@ def prepare_submission(threshold, filename, score, known, submit):
     img2ws = load_pickle_file(img_to_whales)
 
     new_whale = 'new_whale'
-    with open(callback_path + 'score.txt', 'a+') as sf:
+    with open(callback_path + 'score.txt', 'w+') as sf:
         with open(filename, 'wt', newline='\n') as f:
             f.write('Image,Id\n')
             for i, p in enumerate(tqdm(submit)):
@@ -48,26 +53,50 @@ def prepare_submission(threshold, filename, score, known, submit):
                 f.write(p + ',' + ' '.join(t[:5]) + '\n')
                 sf.write(p + ',' + ' '.join(map(str, probs)) + '\n')
 
-if __name__ == "__main__":
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='hwi')
+    parser.add_argument('--output', '-o', dest='output_filename',
+                        help='output filename (.csv)',
+                        default=None, type=str)
+    parser.add_argument('--model', '-m', dest='model_filename',
+                        help='model filename (.h5)',
+                        default=None, type=str)
+    parser.add_argument('--threshold', '-th', dest='threshold',
+                        help='threshold for new_whale',
+                        default=0.99, type=float)
+    return parser.parse_args()
     
+def main():
     tic = time.time()
 
     known = load_pickle_file(known_file)
     submit = load_pickle_file(submit_file)
 
-    weights = load_model(my_model_file).get_weights()
-    model = Model(0, 0)
+    print('inference HWI')
+    args = parse_args()
+    model_path = models_path + args.model_filename
+    submission_path = output_path + args.output_filename
+    threshold = args.threshold
+
+    # Load model
+    weights = load_model(model_path).get_weights()
+    model = Model(0, 0, 'submission')
     model.model.set_weights(weights)
-    # Evaluate the model
-    fknown = model.branch_model.predict_generator(FeatureGen(known), max_queue_size=20, workers=8, verbose=0)
-    fsubmit = model.branch_model.predict_generator(FeatureGen(submit), max_queue_size=20, workers=8, verbose=0)
+
+    # Evaluate model
+    fknown = model.branch_model.predict_generator(FeatureGen(known, model.img_gen.read_for_testing), max_queue_size=20, workers=8, verbose=0)
+    fsubmit = model.branch_model.predict_generator(FeatureGen(submit, model.img_gen.read_for_testing), max_queue_size=20, workers=8, verbose=0)
     score = model.head_model.predict_generator(ScoreGen(fknown, fsubmit), max_queue_size=20, workers=8, verbose=0)
     score = model.score_reshape(score, fknown, fsubmit)
 
-    save_to_pickle('score.pickle', score)
-    # score = load_pickle_file('score.pickle')
-
-    # Generate the submission file
-    prepare_submission(0.99, output_path + 'second_submission_99.csv', score, known, submit)
+    # Generate submission file
+    prepare_submission(threshold, submission_path, score, known, submit)
     toc = time.time()
-    print("Submission time: ", (toc - tic) / 60.)
+    print("Inference time: ", (toc - tic) / 60, 'mins')
+
+
+
+if __name__ == "__main__":
+    main()
+    

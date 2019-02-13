@@ -44,11 +44,11 @@ class TrainingData(Sequence):
         j = start // 2
 
         for i in range(0, size, 2):
-            a[i,:,:,:] = self.img_gen.read_for_training(self.match[j][0])
-            b[i,:,:,:] = self.img_gen.read_for_training(self.match[j][1])
+            a[i,:,:,:] = self.img_gen(self.match[j][0])
+            b[i,:,:,:] = self.img_gen(self.match[j][1])
             c[i,0] = 1
-            a[i+1,:,:,:] = self.img_gen.read_for_training(self.unmatch[j][0])
-            b[i+1,:,:,:] =self.img_gen.read_for_training(self.unmatch[j][1])
+            a[i+1,:,:,:] = self.img_gen(self.unmatch[j][0])
+            b[i+1,:,:,:] = self.img_gen(self.unmatch[j][1])
             c[i+1,0] = 0
             j += 1
         return [a,b], c
@@ -65,8 +65,8 @@ class TrainingData(Sequence):
         end_time = time.time()
         exec_time = end_time - start_time
 
-        with open(callback_path + 'lapjv3.txt', 'a+') as f:
-            f.write(str(self.steps) + str(exec_time) + '\n')
+        with open(callback_path + 'lapjv.txt', 'w+') as f:
+            f.write(str(self.steps) + ' ' + str(exec_time) + '\n')
         
         y = np.arange(len(x), dtype=np.int32)
 

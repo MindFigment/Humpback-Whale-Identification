@@ -24,8 +24,8 @@ class ValData(Sequence):
         c = np.zeros((size,1), dtype=K.floatx())
 
         for i in range(size):
-            a[i,:,:,:] = self.img_gen.read_for_training(self.validation[start + i][0])
-            b[i,:,:,:] = self.img_gen.read_for_training(self.validation[start + i][1])
+            a[i,:,:,:] = self.img_gen(self.validation[start + i][0])
+            b[i,:,:,:] = self.img_gen(self.validation[start + i][1])
             c[i,:] = self.validation[start + i][2]
         return [a,b], c
 

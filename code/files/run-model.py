@@ -1,59 +1,89 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import argparse
 from os.path import isfile
 from model import Model
 import keras
-from globals import mpiotte_standard_model
-from globals import data_path, my_model_file
+from globals import my_model
+from globals import data_path, models_path
 from keras.models import load_model
 
-print(mpiotte_standard_model)
 
-if isfile(mpiotte_standard_model + 'aa'):
-    model = keras.models.load_model('../../data/input/mpiotte-standard.model')
-    print('Loaded mpiotte-standard model')    
-else:
-    # weights = load_model(my_model_file).get_weights()
-    mpiotte_model = Model(64e-5, 0)
-    # mpiotte_model.model.set_weights(weights)
+def run(model_filename):
+
+    model_path = models_path + model_filename
+    model_name = model_filename.split('.')[0]
+    if isfile(model_path):
+       
+        model_weights = keras.models.load_model(model_path).get_weights()
+        my_model = Model(64e-5, 0, model_name)
+        my_model.model.set_weights(model_weights)
+        print('Loaded pretrained model: ', model_name)    
+    else:
+        print('Model name: ', model_name)
+        my_model = Model(64e-5, 0, model_name)
+        
+    ##################
+    #### TRAINING ####
+    ##################
+
     # epoch 0-10
-    mpiotte_model.make_steps(steps=10, ampl=1000)
+    my_model.make_steps(steps=10, ampl=1000)
     ampl = 100.0
     for _ in range(10):
         print('noise ampl = ', ampl)
-        mpiotte_model.make_steps(steps=5, ampl=ampl)
-    ampl = max(1.0, 100**-0.1 * ampl)
-    for _ in range(10): # 18
-        mpiotte_model.make_steps(steps=5, ampl=1.0)
+        my_model.make_steps(steps=5, ampl=ampl)
+        ampl = max(1.0, 100**-0.1 * ampl)
+    for _ in range(18): 
+        my_model.make_steps(steps=7, ampl=1.0)
     # epoch -> 200
-    mpiotte_model.set_lr(16e-5)
+    my_model.set_lr(16e-5)
     for _ in range(10):
-        mpiotte_model.make_steps(steps=5, ampl=0.5)
+        my_model.make_steps(steps=5, ampl=0.5)
     # epoch -> 240
-    mpiotte_model.set_lr(4e-5)
+    my_model.set_lr(4e-5)
     for _ in range(8):
-        mpiotte_model.make_steps(steps=5, ampl=0.5)
+        my_model.make_steps(steps=5, ampl=0.5)
     # epoch -> 250
-    mpiotte_model.set_lr(1e-5)
+    my_model.set_lr(1e-5)
     for _ in range(2):
-        mpiotte_model.make_steps(steps=5, ampl=0.25)
+        my_model.make_steps(steps=5, ampl=0.25)
     # epoch -> 300
-    weights = mpiotte_model.model.get_weights()
-    mpiotte_model = Model(64e-5,0.0002)
-    mpiotte_model.model.set_weights(weights)
+    # weights = my_model.model.get_weights()
+    # my_model = Model(64e-5,0.0002)
+    # my_model.model.set_weights(weights)
+    my_model.model.setl2(0.0002)
     for _ in range(10):
-        mpiotte_model.make_steps(steps=5, ampl=1.0)
+        my_model.make_steps(steps=5, ampl=1.0)
     # epoch -> 350
-    mpiotte_model.set_lr(16e-5)
+    my_model.set_lr(16e-5)
     for _ in range(10):
-        mpiotte_model.make_steps(steps=5, ampl=0.5)
+        my_model.make_steps(steps=5, ampl=0.5)
     # epoch -> 390
-    mpiotte_model.set_lr(4e-5)
+    my_model.set_lr(4e-5)
     for _ in range(8):
-        mpiotte_model.make_steps(steps=5, ampl=0.25)
+        my_model.make_steps(steps=5, ampl=0.25)
     # epoch -> 400
-    mpiotte_model.set_lr(1e-5)
+    my_model.set_lr(1e-5)
     for _ in range(2):
-        mpiotte_model.make_steps(steps=5, ampl=0.25)
+        my_model.make_steps(steps=5, ampl=0.25)
 
-    print(len(mpiotte_model.histories))
+    print('Histories len: ', len(my_model.histories))
 
-    mpiotte_model.model.save(data_path + 'models/tmp.h5')
+    my_model.model.save(model_path)
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='train model')
+    parser.add_argument('--model', '-m', dest='model_filename',
+                        help='model filename',
+                        default=None, type=str)
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
+    run(args.model_filename)
+
+if __name__ == '__main__':
+  main()
