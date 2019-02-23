@@ -17,15 +17,7 @@ def make_dicts():
         save_to_pickle(joined_data_file, joined_data)
 
     # Load img2size dictionary if exists, or create it otherwise
-    if isfile(img_to_size):
-        img2size = load_pickle_file(img_to_size)
-    else:
-        img2size = {}
-        for img in tqdm(joined_data):
-            size = Image.open(expand_path(img)).size
-            img2size[img] = size
-        assert len(img2size) == len(joined_data)
-        save_to_pickle(img_to_size, img2size)
+
 
     train_data = dict([(img, whale) for (_, img, whale) in read_csv(train_csv).to_records()])
     if isfile(whale_to_imgs):

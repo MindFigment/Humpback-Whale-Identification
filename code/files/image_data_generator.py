@@ -64,12 +64,18 @@ class ImageGenerator():
         I = img_to_array(I)
         I = I.reshape((1, ) + self.img_shape)
         I = self.datagen_train.flow(I, batch_size=1)
-        return I[0][0]
+        img = I[0][0]
+        img  -= np.mean(img, keepdims=True)
+        img  /= np.std(img, keepdims=True) + K.epsilon()
+        return img
 
     def read_for_testing(self, img):
         I =read_raw_image(img).convert('L')
         I = img_to_array(I)
         I = I.reshape((1, ) + self.img_shape)
         I = self.datagen_test.flow(I, batch_size=1)
-        return I[0][0]
+        img = I[0][0]
+        img  -= np.mean(img, keepdims=True)
+        img  /= np.std(img, keepdims=True) + K.epsilon()
+        return img
     

@@ -33,11 +33,11 @@ class Model():
     def get_lr(self):
         return K.get_value(self.model.optimizer.lr)
 
-    def set_l2(self, l2):
-        K.set_value(self.model.reqularizers[0].l2, float(l2))
+    # def set_l2(self, l2):
+    #     K.set_value(self.model.regularizer.l2, float(l2))
 
-    def get_l2(self):
-        return K.get_value(self.model.regularizes[0].l2)
+    # def get_l2(self):
+    #     return K.get_value(self.model.regularizer.l2)
 
     def score_reshape(self, score, x, y=None):
         """
@@ -115,8 +115,8 @@ class Model():
 
         # Train the model for 'step' epochs
         history = self.model.fit_generator(
-            TrainingData(score + ampl * np.random.random_sample(size=score.shape), train, self.img_gen.read_for_training, steps=steps, batch_size=32),
-            validation_data = ValData(validation, self.img_gen.read_for_testing, batch_size=32),
+            TrainingData(score + ampl * np.random.random_sample(size=score.shape), train, self.img_gen.read_for_training, steps=steps, batch_size=16),
+            validation_data = ValData(validation, self.img_gen.read_for_testing, batch_size=16),
             initial_epoch=self.step, epochs=self.step + steps, max_queue_size=12, workers=8, verbose=1, callbacks=callbacks_list).history
         self.step += steps
 
@@ -130,8 +130,9 @@ class Model():
         history['epochs'] = self.step
         history['ms'] = np.mean(score)
         history['lr'] = self.get_lr()
+        # history['l2'] = self.get_l2()
         history['map5'] = map_5
-        print(history['epochs'], history['lr'], history['ms'], 'MAP@5 --> ', history['map5'])
+        print('epochs: ', history['epochs'], 'lr:', history['lr'], 'l2: ', history['lr'], 'ms: ', history['ms'], 'MAP@5 --> ', history['map5'])
         self.histories.append(history)
 
     def val_score(self):
@@ -150,7 +151,7 @@ class Model():
             t = []
             s = set()
             a = score[i,:]
-            for j in list(reversed(np.argsort(a))):
+            for j in list(np.argsort(a)):
                 img = val_known[j]
                 for w in img2ws[img]:
                     if w not in s:

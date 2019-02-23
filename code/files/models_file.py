@@ -32,31 +32,31 @@ def build_model(lr, l2, activation='sigmoid'):
     x = BatchNormalization()(x)
     x = Conv2D(128, (1, 1), activation='relu', **kwargs)(x) # (48, 48, 128)
 
-    for _ in range(4):
+    for _ in range(6): # 4
         x = sub_block(x, 64, **kwargs)
 
     x = MaxPooling2D((2, 2), strides=(2, 2))(x) # (24, 24, 128)
     x = BatchNormalization()(x)
     x = Conv2D(256, (1, 1), activation='relu', **kwargs)(x) # (24, 24, 256)
 
-    for _ in range(4):
+    for _ in range(6): # 4
         x = sub_block(x, 64, **kwargs)
 
     x = MaxPooling2D((2, 2), strides=(2, 2))(x) # (12, 12, 256)
     x = BatchNormalization()(x)
-    x = Conv2D(384, (1, 1), activation='relu', **kwargs)(x) # (12, 12, 384)
+    x = Conv2D(512, (1, 1), activation='relu', **kwargs)(x) # (12, 12, 512) # 384
 
-    for _ in range(4):
+    for _ in range(6): # 4
         x = sub_block(x, 96, **kwargs)
 
-    x = MaxPooling2D((2, 2), strides=(2, 2))(x) # (6, 6, 384)
+    x = MaxPooling2D((2, 2), strides=(2, 2))(x) # (6, 6, 512) # 384
     x = BatchNormalization()(x)
-    x = Conv2D(512, (1, 1), activation='relu', **kwargs)(x) # (6, 6, 512)
+    x = Conv2D(1024, (1, 1), activation='relu', **kwargs)(x) # (6, 6, 1024) # 512
 
-    for _ in range(4):
+    for _ in range(6): # 4
         x = sub_block(x, 128, **kwargs)
 
-    x = GlobalMaxPooling2D()(x) # (512)
+    x = GlobalMaxPooling2D()(x) # (1024) # 512
 
     branch_model = Model(inp, x)
 
@@ -96,9 +96,10 @@ def build_model(lr, l2, activation='sigmoid'):
     xb = branch_model(img_b)
     x = head_model([xa, xb])
     model = Model([img_a, img_b], x)
-
-    model.compile(optimizer, loss='binary_crossentropy',
-                  metrics=['binary_crossentropy', 'acc'])
+    # loss='binary_crossentropy'
+    # loss=contrastive_loss
+    model.compile(optimizer, loss=contrastive_loss,
+                  metrics=['binary_crossentropy', 'accuracy'])
 
     return model, branch_model, head_model
 
@@ -113,3 +114,23 @@ def sub_block(x, filter, **kwargs):
     y = Add()([x, y])
     y = Activation('relu')(y)
     return y
+
+def contrastive_loss(y_true, y_pred):
+    """Contrastive loss from Hadsell-et-al.'06
+    http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
+    """
+    margin = 0.9
+    similarity = K.square(y_pred) * y_true
+    dissimilarity = K.square(K.maximum(margin - y_pred, 0)) * (1 - y_true)
+    loss = K.mean(similarity + dissimilarity) / 2
+    return loss
+
+def euclidian_distance(vects):
+    x, y = vects
+    sum_square = K.sum(K.square(x - y), axis=1, keepDims=True)
+    distance = K.sqrt(K.maximum(sum_square, K.epsilon()))
+    return distance
+
+def contrastive_acc(y_true, y_pred):
+    ones = K.ones_like(y_pred)
+    return K.mean(K.equal(y_true, ones - K.clip(K.round(y_pred), 0, 1)), axis=-1)

@@ -16,7 +16,7 @@ class TrainingData(Sequence):
         @param steps: number of epoch we are planning with this score matrix
         """
         super(TrainingData, self).__init__()
-        self.score = -score
+        self.score = score #-score
         self.train = train
         self.steps = steps
         self.batch_size = batch_size

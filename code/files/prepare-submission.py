@@ -13,6 +13,8 @@ from utils import load_pickle_file, save_to_pickle
 import time
 from model import Model
 import argparse
+from models_file import contrastive_loss
+import keras
 
 def prepare_submission(threshold, filename, score, known, submit):
     """
@@ -80,7 +82,8 @@ def main():
     threshold = args.threshold
 
     # Load model
-    weights = load_model(model_path).get_weights()
+    #weights = load_model(model_path).get_weights()
+    weights =  keras.models.load_model(model_path, custom_objects={'contrastive_loss': contrastive_loss}).get_weights()
     model = Model(0, 0, 'submission')
     model.model.set_weights(weights)
 
