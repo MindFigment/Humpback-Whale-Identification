@@ -5,9 +5,7 @@ from keras.layers import Activation, Add, BatchNormalization, Concatenate, Conv2
 from keras.models import Model
 from keras import backend as K
 
-img_shape = (384, 384, 1)
-
-def build_model(lr, l2, activation='sigmoid'):
+def build_model(lr, l2, activation='sigmoid', img_shape=(384, 384, 1)):
 
     regularizer = regularizers.l2(l2)
     optimizer = Adam(lr=lr)
@@ -96,12 +94,15 @@ def build_model(lr, l2, activation='sigmoid'):
     xb = branch_model(img_b)
     x = head_model([xa, xb])
     model = Model([img_a, img_b], x)
-    # loss='binary_crossentropy'
-    # loss=contrastive_loss
-    model.compile(optimizer, loss=contrastive_loss,
-                  metrics=['binary_crossentropy', 'accuracy'])
+
+    model.compile(optimizer, loss='binary_crossentropy',
+                  metrics=['binary_crossentropy', 'accuracy'], regularizer=regularizer)
 
     return model, branch_model, head_model
+
+########################
+### HELPER FUNCTIONS ###
+########################
 
 def sub_block(x, filter, **kwargs):
     x = BatchNormalization()(x)

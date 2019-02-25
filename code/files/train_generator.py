@@ -1,6 +1,6 @@
 from keras.utils import Sequence
 from scipy.optimize import linear_sum_assignment
-from globals import whale_to_training, whale_to_index, callback_path
+from globals import callback_path
 from keras import backend as K
 from utils import read_raw_image
 from utils import load_pickle_file, save_to_pickle
@@ -10,19 +10,21 @@ import time
 from lapjv import lapjv 
 
 class TrainingData(Sequence):
-    def __init__(self, score, train, img_gen, steps=1000, batch_size=32):
+    def __init__(self, score, train, img_gen, w2ts, w2i, steps=1000, batch_size=32, img_shape=(384, 384, 1)):
         """
         @param score: cost matrix for the picture matching
         @param steps: number of epoch we are planning with this score matrix
+        @param w2ts: whale to training examples
+        @param w2i: whale to index in the training dataset
         """
         super(TrainingData, self).__init__()
-        self.score = score #-score
+        self.score = -score # change to score if want to use contrastive loss instead of binary crossentropy
         self.train = train
         self.steps = steps
         self.batch_size = batch_size
-        self.img_shape = (384,384,1)
-        self.w2ts = load_pickle_file(whale_to_training)
-        self.w2i = load_pickle_file(whale_to_index)
+        self.img_shape = img_shape
+        self.w2ts = w2ts
+        self.w2i = w2i
         self.match = []
         self.unmatch = []
         self.img_gen = img_gen
@@ -33,25 +35,19 @@ class TrainingData(Sequence):
                     self.score[i, j] = 10000.0
         self.on_epoch_end()
 
+    def __len__(self):
+        return (len(self.match) + len(self.unmatch) + self.batch_size - 1) // self.batch_size
+
     def __getitem__(self, index):
         start = self.batch_size * index
         end = min(start + self.batch_size, len(self.match) + len(self.unmatch))
         size = end - start
         assert size > 0
-        a = np.zeros((size, ) + self.img_shape, dtype=K.floatx())
-        b = np.zeros((size, ) + self.img_shape, dtype=K.floatx())
-        c = np.zeros((size,1), dtype=K.floatx())
-        j = start // 2
+        
+        # Generate data
+        [a, b], c = self.__data_generation(start, size)
 
-        for i in range(0, size, 2):
-            a[i,:,:,:] = self.img_gen(self.match[j][0])
-            b[i,:,:,:] = self.img_gen(self.match[j][1])
-            c[i,0] = 1
-            a[i+1,:,:,:] = self.img_gen(self.unmatch[j][0])
-            b[i+1,:,:,:] = self.img_gen(self.unmatch[j][1])
-            c[i+1,0] = 0
-            j += 1
-        return [a,b], c
+        return [a, b], c
 
     def on_epoch_end(self):
         if self.steps <= 0:
@@ -92,8 +88,25 @@ class TrainingData(Sequence):
         self.score[y, x] = 10000.0
         random.shuffle(self.match)
         random.shuffle(self.unmatch)
-        # print(len(self.match), len(self.unmatch), len(self.train))
         assert len(self.match) == len(self.train) and len(self.unmatch) == len(self.train)
 
-    def __len__(self):
-        return (len(self.match) + len(self.unmatch) + self.batch_size - 1) // self.batch_size
+    def __data_generation(self, start, size):
+        'Generates data containing (end - start) samples'
+        # Generate data
+        a = np.empty((size, ) + self.img_shape, dtype=K.floatx())
+        b = np.empty((size, ) + self.img_shape, dtype=K.floatx())
+        c = np.empty((size,1), dtype=K.floatx())
+        j = start // 2
+
+        for i in range(0, size, 2):
+            a[i,:,:,:] = self.img_gen(self.match[j][0])
+            b[i,:,:,:] = self.img_gen(self.match[j][1])
+            c[i,0] = 1
+            a[i+1,:,:,:] = self.img_gen(self.unmatch[j][0])
+            b[i+1,:,:,:] = self.img_gen(self.unmatch[j][1])
+            c[i+1,0] = 0
+            j += 1
+
+        return [a, b], c
+
+

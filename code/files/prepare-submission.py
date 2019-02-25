@@ -15,6 +15,7 @@ from model import Model
 import argparse
 from models_file import contrastive_loss
 import keras
+import os
 
 def prepare_submission(threshold, filename, score, known, submit):
     """
@@ -22,11 +23,21 @@ def prepare_submission(threshold, filename, score, known, submit):
     @param threshold: threshold given to 'new_whale'
     @param filname: submission file name
     """
-    img2ws = load_pickle_file(img_to_whales)
+    image2whale = load_pickle_file(img2whale_file)
+
+    # Create scores dir if doesn't exist
+    scores_dir = callback_path + 'scores/'
+    os.makedirs(scores_dir, exist_ok=True)
 
     new_whale = 'new_whale'
-    with open(callback_path + 'score.txt', 'w+') as sf:
-        with open(filename, 'wt', newline='\n') as f:
+
+    # Prepare files paths`
+    score_file = scores_dir + filename.replace('.h5', '.score')
+    output_file = output_path + filename
+    
+    # Code for creating submission file, 5 best scores for each whale image
+    with open(score_file, 'w+') as sf:
+        with open(output_file, 'wt', newline='\n') as f:
             f.write('Image,Id\n')
             for i, p in enumerate(tqdm(submit)):
                 t = []
@@ -41,7 +52,7 @@ def prepare_submission(threshold, filename, score, known, submit):
                         probs.append(a[j])
                         if len(t) == 5:
                             break
-                    for w in img2ws[img]:
+                    for w in image2whale[img]:
                         assert w != new_whale
                         if w not in s:
                             s.add(w)
@@ -72,19 +83,19 @@ def parse_args():
 def main():
     tic = time.time()
 
-    known = load_pickle_file(known_file)
-    submit = load_pickle_file(submit_file)
+    known = load_pickle_file(train_known_file)
+    submit = load_pickle_file(train_submit_file)
 
     print('inference HWI')
     args = parse_args()
     model_path = models_path + args.model_filename
-    submission_path = output_path + args.output_filename
+    #submission_path = output_path + args.output_filename
     threshold = args.threshold
 
     # Load model
-    #weights = load_model(model_path).get_weights()
-    weights =  keras.models.load_model(model_path, custom_objects={'contrastive_loss': contrastive_loss}).get_weights()
-    model = Model(0, 0, 'submission')
+    weights = load_model(model_path).get_weights()
+    # weights =  keras.models.load_model(model_path, custom_objects={'contrastive_loss': contrastive_loss}).get_weights()
+    model = Model(0, 0, 'submission', use_val=False)
     model.model.set_weights(weights)
 
     # Evaluate model
@@ -94,11 +105,9 @@ def main():
     score = model.score_reshape(score, fknown, fsubmit)
 
     # Generate submission file
-    prepare_submission(threshold, submission_path, score, known, submit)
+    prepare_submission(threshold, args.output_filename, score, known, submit)
     toc = time.time()
     print("Inference time: ", (toc - tic) / 60, 'mins')
-
-
 
 if __name__ == "__main__":
     main()
