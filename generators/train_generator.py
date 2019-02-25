@@ -1,13 +1,13 @@
 from keras.utils import Sequence
 from scipy.optimize import linear_sum_assignment
-from globals import callback_path
 from keras import backend as K
-from utils import read_raw_image
-from utils import load_pickle_file, save_to_pickle
 import numpy as np
 import random
 import time
 from lapjv import lapjv 
+
+from globals import callback_path
+from utils import load_pickle_file, save_to_pickle, read_raw_image
 
 class TrainingData(Sequence):
     def __init__(self, score, train, img_gen, w2ts, w2i, steps=1000, batch_size=32, img_shape=(384, 384, 1)):
@@ -63,7 +63,7 @@ class TrainingData(Sequence):
 
         with open(callback_path + 'lapjv.txt', 'w+') as f:
             f.write(str(self.steps) + ' ' + str(exec_time) + '\n')
-        
+     
         y = np.arange(len(x), dtype=np.int32)
 
         for ts in self.w2ts.values():

@@ -1,8 +1,9 @@
+from keras import backend as K
 from keras.utils import Sequence
 import numpy as np
-from keras import backend as K
-from utils import read_raw_image
 from tqdm import tqdm
+
+from utils.utils import read_raw_image
 
 # A keras generator to evaluate only the BRANCH MODEL
 class FeatureGen(Sequence):

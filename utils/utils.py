@@ -1,6 +1,7 @@
 from PIL import Image
 from os.path import isfile
 import pickle
+
 from globals import train_dir, test_dir
 
 def expand_path(img):
@@ -21,5 +22,5 @@ def save_to_pickle(path, object):
 
 def read_raw_image(img, img_shape=(384, 384, 1), mode='L'):
     I = Image.open(expand_path(img)).convert(mode)
-    I = I.resize(img_shape[-1])
+    I = I.resize(img_shape[:-1])
     return I

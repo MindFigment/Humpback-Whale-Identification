@@ -96,7 +96,7 @@ def build_model(lr, l2, activation='sigmoid', img_shape=(384, 384, 1)):
     model = Model([img_a, img_b], x)
 
     model.compile(optimizer, loss='binary_crossentropy',
-                  metrics=['binary_crossentropy', 'accuracy'], regularizer=regularizer)
+                  metrics=['binary_crossentropy', 'accuracy'])
 
     return model, branch_model, head_model
 

@@ -1,20 +1,15 @@
+import keras
 from keras import backend as K
 import numpy as np
 import random
-from models_file import build_model
-from globals import *
 from pandas import read_csv
-from globals import train_csv
-from utils import load_pickle_file, save_to_pickle
-from feature_generator import FeatureGen
-from score_generator import ScoreGen
-from train_generator import TrainingData
-from val_generator import ValData
-from utils import save_to_pickle
-import keras
 from tqdm import tqdm
-from image_data_generator import ImageGenerator
 import os
+
+from globals import *
+from generators import FeatureGen, ScoreGen, TrainingData, ValData, ImageGenerator
+from models import build_model
+from utils import save_to_pickle, load_pickle_file, save_to_pickle
 
 class Model():
     """
@@ -28,12 +23,12 @@ class Model():
         self.img_gen = ImageGenerator()
         self.best_map5 = 0
         self.model_name = model_name
-        self.w2ts = load_pickle_file(whale2training_file)
         # Make callbacklist
-        self.callbacklist = self.make_callback_list()
+        self.callback_list = self.make_callback_list()
         # Load train
         if small_dataset:
             self.train = load_pickle_file(train_examples_small_file)
+            print('SMALL DATASET')
         else:
             self.train = load_pickle_file(train_examples_file)
         if small_dataset:
@@ -44,6 +39,9 @@ class Model():
             self.validation = ValData(validation_data, self.img_gen.read_for_testing, batch_size=16)
         else:
             self.validation = None
+        # Make whale to training dict
+        self.w2ts = self.make_w2ts()
+
 
     def set_lr(self, lr):
         K.set_value(self.model.optimizer.lr, float(lr))
@@ -104,7 +102,7 @@ class Model():
         # Train the model for 'step' epochs
         history = self.model.fit_generator(
             TrainingData(score + ampl * np.random.random_sample(size=score.shape), self.train, self.img_gen.read_for_training, steps=steps, batch_size=16, w2ts=self.w2ts, w2i=w2i),
-            validation_data = self.validation, initial_epoch=self.step, epochs=self.step + steps, max_queue_size=12, workers=8, verbose=1, callbacks=self.callbacks_list).history
+            validation_data = self.validation, initial_epoch=self.step, epochs=self.step + steps, max_queue_size=12, workers=8, verbose=1, callbacks=self.callback_list).history
         self.step += steps
 
         # Compute MAP@5 for validation data
@@ -193,3 +191,18 @@ class Model():
         ]
 
         return callbacks_list
+
+    def make_w2ts(self):
+        w2ts = {}
+        whale2imgs = load_pickle_file(whale2imgs_file)
+        for whale, imgs in tqdm(whale2imgs.items()):
+            for img in imgs:
+                if img in self.train:
+                    if whale not in w2ts:
+                        w2ts[whale] = []
+                    if img not in w2ts[whale]:
+                        w2ts[whale].append(img)
+        for w, ts in w2ts.items():
+            w2ts[w] = np.array(ts)
+
+        return w2ts

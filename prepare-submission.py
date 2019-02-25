@@ -2,22 +2,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tqdm import tqdm
+import keras
+from keras.models import load_model
 import numpy as np
 import pandas as pd
-from globals import *
-from feature_generator import FeatureGen
-from score_generator import ScoreGen
-from keras.models import load_model
-from utils import load_pickle_file, save_to_pickle
-import time
-from model import Model
+from tqdm import tqdm
 import argparse
-from models_file import contrastive_loss
-import keras
 import os
+import time
 
-def prepare_submission(threshold, filename, score, known, submit):
+from globals import *
+from generators import FeatureGen, ScoreGen
+from utils import load_pickle_file, save_to_pickle
+from models import Model, contrastive_loss
+
+def prepare_submission(threshold, filename, score, known, submit, model_file):
     """
     Generate kaggle submission file.
     @param threshold: threshold given to 'new_whale'
@@ -29,11 +28,15 @@ def prepare_submission(threshold, filename, score, known, submit):
     scores_dir = callback_path + 'scores/'
     os.makedirs(scores_dir, exist_ok=True)
 
+    # Create model_dir if doesn't exist
+    model_dir = output_path + model_file.split('/')[0] + '/'
+    os.makedirs(model_dir)
+
     new_whale = 'new_whale'
 
     # Prepare files paths`
     score_file = scores_dir + filename.replace('.h5', '.score')
-    output_file = output_path + filename
+    output_file = model_dir + filename
     
     # Code for creating submission file, 5 best scores for each whale image
     with open(score_file, 'w+') as sf:
@@ -105,7 +108,7 @@ def main():
     score = model.score_reshape(score, fknown, fsubmit)
 
     # Generate submission file
-    prepare_submission(threshold, args.output_filename, score, known, submit)
+    prepare_submission(threshold, args.output_filename, score, known, submit, args.model_filename)
     toc = time.time()
     print("Inference time: ", (toc - tic) / 60, 'mins')
 

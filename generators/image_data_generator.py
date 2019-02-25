@@ -5,6 +5,7 @@ import numpy as np
 from pandas import read_csv
 from tqdm import tqdm
 from PIL import Image
+
 from globals import train_csv
 from utils import expand_path, read_raw_image
 

@@ -1,7 +1,9 @@
 from keras.utils import Sequence
 from keras import backend as K
-from utils import read_raw_image
 import numpy as np
+
+from utils import read_raw_image
+
 
 class ValData(Sequence):
     def __init__(self, validation, img_gen, batch_size=32, img_shape=(384, 384, 1)):

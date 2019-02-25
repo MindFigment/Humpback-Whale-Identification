@@ -1,13 +1,15 @@
-from globals import *
-from os.path import isfile
 import os
+from os.path import isfile
 from pandas import read_csv
-from utils import load_pickle_file, save_to_pickle, expand_path
 from tqdm import tqdm
 from PIL import Image
 import random
 import numpy as np
 import argparse
+
+from globals import *
+from utils import load_pickle_file, save_to_pickle, expand_path
+
 
 def make_dicts(reset_all, make_val):
 
@@ -18,7 +20,7 @@ def make_dicts(reset_all, make_val):
     test_data = [img for (_, img, _) in read_csv(sample_csv).to_records()]
 
     # Load whale_to_imgs dictionary if exists, or create it otherwise
-    if isfile(whale2imgs_file or not reset_all):
+    if isfile(whale2imgs_file and not reset_all):
         whale2imgs = load_pickle_file(whale2imgs_file)
     else:
         whale2imgs = {}
@@ -33,7 +35,7 @@ def make_dicts(reset_all, make_val):
     if not isfile(img2whale_file) or reset_all:
         # Find elements from training set other then 'new_whale'
         img2whale = {}
-        for img, whale in train_data.items():
+        for img, whale in tqdm(train_data.items()):
             if whale != 'new_whale':
                 if img not in img2whale:
                     img2whale[img] = whale
@@ -58,6 +60,8 @@ def make_dicts(reset_all, make_val):
         val_known = []
         val_submit = []
         matching_count = 0
+        small_train_examples = []
+        small_count = 0
 
         if make_val:
             for whale, imgs in tqdm(whale2imgs.items()):
@@ -76,8 +80,14 @@ def make_dicts(reset_all, make_val):
                     val_submit.append([imgs[1], whale])
                     matching_count += 1
                     train_examples += imgs[2:]
+                    if (small_count + 2) % 10 < 2:
+                        small_train_examples += imgs[2:]
+                        small_count += 2
                 else:
                     train_examples += imgs
+                    if (small_count + len(imgs)) % 10 < len(imgs):
+                        small_train_examples += imgs
+                        small_count += len(imgs)
         else:
             for whale, imgs in tqdm(whale2imgs.items()):
                 if whale == 'new_whale':
@@ -90,14 +100,23 @@ def make_dicts(reset_all, make_val):
                     val_known.append(imgs[1])
                     val_submit.append([imgs[0], whale])
                     train_examples += imgs
+                    if (small_count + 2) % 10 < 2:
+                        small_train_examples += imgs
+                        small_count += 2
                 elif len(imgs) >=4 and matching_count < extra_count:
                     val_match.append((imgs[0], imgs[1], 1))
                     val_known.append(imgs[0])
                     val_submit.append([imgs[1], whale])
                     matching_count += 1
                     train_examples += imgs
+                    if (small_count + len(imgs)) % 10 < len(imgs):
+                        small_train_examples += imgs
+                        small_count += len(imgs)
                 else:
                     train_examples += imgs
+                    if (small_count + len(imgs)) % 10 < len(imgs):
+                        small_train_examples += imgs
+                        small_count += len(imgs)
 
         print('lonely whales count: ', lonely_count)
         print('new whales count: ', new_count)
@@ -110,9 +129,10 @@ def make_dicts(reset_all, make_val):
         random.shuffle(validation_examples)
         random.shuffle(train_examples)
 
-        small_train_size = len(train_examples) // 10
+        # small_train_size = len(train_examples) // 10
+        # small_train_examples = train_examples[:small_train_size]
+
         small_validation_size = len(validation_examples) // 10
-        small_train_examples = train_examples[:small_train_size]
         small_validation_examples = validation_examples[:small_validation_size]
 
         # print('TRAIN')
@@ -134,20 +154,6 @@ def make_dicts(reset_all, make_val):
 
         save_to_pickle(val_known_file, val_known)
         save_to_pickle(val_submit_file, val_submit)
-
-        w2ts = {}
-        for whale, imgs in tqdm(whale2imgs.items()):
-            for img in imgs:
-                if img in train_examples:
-                    if whale not in w2ts:
-                        w2ts[whale] = []
-                    if img not in w2ts[whale]:
-                        w2ts[whale].append(img)
-        for w, ts in w2ts.items():
-            w2ts[w] = np.array(ts)
-
-        save_to_pickle(whale2training_file, w2ts)
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description='hwi')

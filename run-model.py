@@ -2,14 +2,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import keras
+from keras.models import load_model
 import argparse
 from os.path import isfile
-import keras
-from globals import my_model
+
 from globals import data_path, models_path
-from keras.models import load_model
-from models_file import contrastive_loss
-from model import Model
+from models import Model, contrastive_loss
 
 def run(model_filename, use_val, small_data):
 
@@ -19,12 +18,12 @@ def run(model_filename, use_val, small_data):
     if isfile(model_path):
         model_weights = keras.models.load_model(model_path).get_weights()
         # model_weights =  keras.models.load_model(model_path, custom_objects={'contrastive_loss': contrastive_loss}).get_weights()
-        my_model = Model(64e-5, 2e-4, model_name, use_val=use_val, small_data=small_data)
+        my_model = Model(64e-5, 2e-4, model_name, use_val=use_val, small_dataset=small_data)
         my_model.model.set_weights(model_weights)
         print('Loaded pretrained model: ', model_name)    
     else:
         print('Model name: ', model_name)
-        my_model = Model(64e-5, 2e-4, model_name, use_val=use_val, small_data=small_data)
+        my_model = Model(64e-5, 2e-4, model_name, use_val=use_val, small_dataset=small_data)
         
     ##################
     #### TRAINING ####
@@ -73,15 +72,19 @@ def run(model_filename, use_val, small_data):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='train model')
+
     parser.add_argument('--model', '-m', dest='model_filename',
-                        help='model filename',
+                        help='model filename (model.h5)',
                         default=None, type=str)
-    parser.add_argument('--use_val', '-uv', dest='use_val',
-                        help='model filename',
-                        default=True, type=bool)
-    parser.add_argument('--small_data', '-s', dest='small_data',
-                        help='Use small dataset',
-                        default=False, type=bool)
+
+    parser.add_argument('--val', dest='use_val', action='store_true')
+    parser.add_argument('--no-val', dest='use_val', action='store_false')
+    parser.set_defaults(use_val=True)
+
+    parser.add_argument('--small_data', dest='small_data', action='store_true')
+    parser.add_argument('--no-small_data', dest='small_data', action='store_false')
+    parser.set_defaults(small_data=False)
+    
     return parser.parse_args()
 
 def main():

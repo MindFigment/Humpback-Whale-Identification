@@ -2,11 +2,11 @@
 ## Folder paths ##
 ##################
 
-data_path = '/home/stanislaw/kaggle-competitions/Humpback-Whale-Identification/data/' # main data folder path
+data_path = '/home/tszmelcz/kaggle-competitions/Humpback-Whale-Identification/data/' # main data folder path
 input_path = data_path + 'input/'
-cropped_imgs_path = data_path + 'cropped_imgs/'
-# train_dir = input_path + 'train/'
-# test_dir = input_path + 'test/'
+cropped_imgs_path = input_path + 'cropped/'
+# train_dir = input_path + 'raw/train/'
+# test_dir = input_path + '/raw/test/'
 train_dir = cropped_imgs_path + 'train/'
 test_dir = cropped_imgs_path + 'test/'
 
@@ -44,4 +44,3 @@ train_submit_file = meta_dir + 'submit.pickle'
 val_known_file = meta_dir + 'val_known.pickle'
 val_submit_file = meta_dir + 'val_submit.pickle'
 
-my_model = models_path + 'my_model.h5'

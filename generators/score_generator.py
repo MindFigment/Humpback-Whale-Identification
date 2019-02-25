@@ -1,8 +1,10 @@
+from keras import backend as K
 from keras.utils import Sequence
 import numpy as np
-from keras import backend as K
-from utils import read_raw_image
 from tqdm import tqdm
+
+from utils import read_raw_image
+
 
 # A keras generator to evaluate on the HEAD MODEL on features already pre-computed.
 # It computes only  the upper triangular matrix of the cost matrix if y is None
