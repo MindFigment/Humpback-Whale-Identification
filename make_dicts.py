@@ -73,11 +73,11 @@ def make_dicts(reset_all, make_val):
                 elif len(imgs) == 2:
                     val_match.append((imgs[0], imgs[1], 1))
                     val_known.append(imgs[1])
-                    val_submit.append([imgs[0], whale])
+                    val_submit.append((imgs[0], whale))
                 elif len(imgs) >=4 and matching_count < extra_count:
                     val_match.append((imgs[0], imgs[1], 1))
                     val_known.append(imgs[0])
-                    val_submit.append([imgs[1], whale])
+                    val_submit.append((imgs[1], whale))
                     matching_count += 1
                     train_examples += imgs[2:]
                     if (small_count + 2) % 10 < 2:
@@ -98,7 +98,7 @@ def make_dicts(reset_all, make_val):
                 elif len(imgs) == 2:
                     val_match.append((imgs[0], imgs[1], 1))
                     val_known.append(imgs[1])
-                    val_submit.append([imgs[0], whale])
+                    val_submit.append((imgs[0], whale))
                     train_examples += imgs
                     if (small_count + 2) % 10 < 2:
                         small_train_examples += imgs
@@ -106,7 +106,7 @@ def make_dicts(reset_all, make_val):
                 elif len(imgs) >=4 and matching_count < extra_count:
                     val_match.append((imgs[0], imgs[1], 1))
                     val_known.append(imgs[0])
-                    val_submit.append([imgs[1], whale])
+                    val_submit.append((imgs[1], whale))
                     matching_count += 1
                     train_examples += imgs
                     if (small_count + len(imgs)) % 10 < len(imgs):

@@ -127,8 +127,8 @@ class Model():
         """
         val_known = load_pickle_file(val_known_file)
         tmp = load_pickle_file(val_submit_file)
-        val_submit = tmp[:, 0]
-        y_true = tmp[:, 1]
+        val_submit = [ img for (img, _) in tmp ]
+        y_true = [ w for (_, w) in tmp ]
         del tmp
 
         fknown = self.branch_model.predict_generator(FeatureGen(val_known, self.img_gen.read_for_testing), max_queue_size=20, workers=8, verbose=0)

@@ -30,7 +30,7 @@ def run(model_filename, use_val, small_data):
     ##################  
 
     # epoch 0-10
-    my_model.make_steps(steps=10, ampl=1000)
+    my_model.make_steps(steps=1, ampl=1000)
     ampl = 100.0
     for _ in range(10):
         print('noise ampl = ', ampl)
